@@ -1,0 +1,9 @@
+pdfplumber
+beautifulsoup4
+lxml
+pandas
+openpyxl
+unidecode
+pytesseract
+pdf2image
+pillow

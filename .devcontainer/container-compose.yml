@@ -1,0 +1,92 @@
+services:
+  app:
+    container_name: xotrik_devcontainer_app
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+      args:
+        DOCKER_BUILDKIT: 1
+        BUILDKIT_INLINE_CACHE: 1
+    image: localhost/xotrik/app_devcontainer:latest
+    volumes:
+      - ../..:/workspaces:Z
+      - ${HOME}/.local/share/containers:/home/vscode/.local/share/containers:Z
+    security_opt:
+      - label=disable
+    command: sleep infinity
+    depends_on:
+      - mysql_db
+      - postgresql_db
+
+  mysql_db:
+    container_name: xotrik-mysqldb
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: xotrikdb
+      MYSQL_USER: adminuser
+      MYSQL_PASSWORD: root_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - ../backend/volumes/mysql-data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "adminuser", "--password=root_password"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+
+
+#  mysql-configurator:
+#    image: mysql:8.0
+#    volumes:
+#      - ../DatabaseScripts:/scripts
+#    depends_on:
+#      db:
+#        condition: service_healthy
+#    command: >
+#      bash -c '
+#      echo "Waiting for MySQL to be ready..." &&
+#      sleep 10 &&
+#      mysql -h mysql-assignationcontrol -u mysqluser -proot_password -e "source /scripts/MySqlDatabaseScript.sql" &&
+#      echo "Database has been initialized successfully!"'
+
+  adminer:
+    container_name: xotrik-mysql-admin
+    image: adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql_db
+
+  # PostgreSQL Service
+  postgresql_db:
+    container_name: xotrik-postgresdb
+    image: postgres:15
+    environment:
+      POSTGRES_DB: xotrikdb
+      POSTGRES_USER: adminuser
+      POSTGRES_PASSWORD: root_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ../backend/volumes/postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U adminuser -d xotrikdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # pgAdmin - PostgreSQL Administration Tool
+  pgadmin:
+    container_name: xotrik-postgresql-admin
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: root_password
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgresql_db
