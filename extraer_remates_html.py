@@ -73,13 +73,28 @@ def parse_html_remates(path_html, output_excel="remates_html.xlsx"):
 
             provincia = extraer_provincia(entry)
 
+
+
+#            canton = None
+#            m = re.search(r"Cant[oó]n[:\uFF1A]?\s*([A-Za-zÁÉÍÓÚÑ0-9 ]{2,60})", entry, re.I)
+#            if m: canton = m.group(1).strip()
+
+#            distrito = None
+#            m = re.search(r"Distrito[:\uFF1A]?\s*([A-Za-zÁÉÍÓÚÑ0-9 ]{2,60})", entry, re.I)
+#            if m: distrito = m.group(1).strip()
+
             canton = None
-            m = re.search(r"Cant[oó]n[:\uFF1A]?\s*([A-Za-zÁÉÍÓÚÑ0-9 ]{2,60})", entry, re.I)
-            if m: canton = m.group(1).strip()
+            m = re.search(r"Cant[oó]n[:\uFF1A]?\s*([0-9]{1,2}\s*-\s*[A-Za-zÁÉÍÓÚÑ ]+)", entry, re.I)
+            if m:
+                canton = limpiar_nombre_geo(m.group(1))
 
             distrito = None
-            m = re.search(r"Distrito[:\uFF1A]?\s*([A-Za-zÁÉÍÓÚÑ0-9 ]{2,60})", entry, re.I)
-            if m: distrito = m.group(1).strip()
+            m = re.search(r"Distrito[:\uFF1A]?\s*([0-9]{1,2}\s*-\s*[A-Za-zÁÉÍÓÚÑ ]+)", entry, re.I)
+            if m:
+                distrito = limpiar_nombre_geo(m.group(1))
+
+
+
 
             base_remate, base_valor, base_moneda = extraer_base(entry)
 
@@ -101,6 +116,21 @@ def parse_html_remates(path_html, output_excel="remates_html.xlsx"):
     df.to_excel(output_excel, index=False)
     print(f"✅ Guardado {len(df)} remates en {output_excel} (tomando referencia del <p> siguiente)")
     return df
+
+def limpiar_nombre_geo(texto: str) -> str:
+    """Quita número inicial y tildes, deja el nombre limpio en mayúsculas."""
+    if not texto:
+        return None
+    # Si viene como "6-GUÁCIMO"
+    if "-" in texto:
+        nombre = texto.split("-", 1)[1]
+    else:
+        nombre = texto
+    # Normalizar tildes y mayúsculas
+    nombre = unicodedata.normalize("NFKD", nombre)
+    nombre = "".join(c for c in nombre if not unicodedata.combining(c))
+    return nombre.strip().upper()
+
 
 # ---------------- CLI ----------------
 if __name__ == "__main__":
