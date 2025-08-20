@@ -28,7 +28,7 @@ def extraer_provincia(entry: str) -> str | None:
 
 def extraer_base(entry: str):
     base_remate, base_valor, base_moneda = None, None, None
-    m = re.search(r"(base(?:\s+de)?\s+remate\s*[:\uFF1A]?\s*[^\.\n]{1,200})", entry, re.I)
+    m = re.search(r"(base(?:\s+de)?\s+remate\s*[:\uff1a]?\s*[^\.\n]{1,200})", entry, re.I)
     if m:
         base_remate = m.group(1).strip()
         m2 = re.search(r"(₡|¢|US\$|\$|USD)\s?([0-9\.,]+)", base_remate)
@@ -45,6 +45,75 @@ def extraer_base(entry: str):
             except:
                 base_valor = None
     return base_remate, base_valor, base_moneda
+
+def extraer_base_remate_texto(entry: str) -> str | None:
+    """
+    Extrae el valor de la base del remate como texto, incluyendo CÉNTIMOS/EXACTOS.
+    """
+    pattern = r"Con una base de\s+(.*?(?:CÉNTIMOS|EXACTOS),?)"
+    match = re.search(pattern, entry, re.IGNORECASE | re.DOTALL)
+    if match:
+        texto_base = match.group(1).strip()
+        texto_base = re.sub(r'\s+', ' ', texto_base)
+        return texto_base.replace(",", "")
+    return None
+
+def texto_a_numero(texto: str) -> float | None:
+    if not texto or not isinstance(texto, str):
+        return None
+
+    texto = normalizar_texto(texto)
+    # clean up words that are not numbers
+    texto = texto.replace("exactos", "").strip()
+    texto = texto.replace("colones", "").strip()
+    texto = texto.replace("dolares", "").strip()
+    texto = texto.replace("de", "").strip()
+    texto = re.sub(r"\s+", " ", texto)
+
+    # Handling "un mil" as "mil"
+    if texto == "un mil":
+        texto = "mil"
+
+    words = texto.split()
+    if not words:
+        return None
+
+    # dictionary mapping number words to their values
+    word_map = {
+        'cero': 0, 'un': 1, 'uno': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5, 'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9,
+        'diez': 10, 'once': 11, 'doce': 12, 'trece': 13, 'catorce': 14, 'quince': 15, 'dieciseis': 16, 'diecisiete': 17, 'dieciocho': 18, 'diecinueve': 19,
+        'veinte': 20, 'veintiun': 21, 'veintiuno': 21, 'veintidos': 22, 'veintitres': 23, 'veinticuatro': 24, 'veinticinco': 25, 'veintiseis': 26, 'veintisiete': 27, 'veintiocho': 28, 'veintinueve': 29,
+        'treinta': 30, 'cuarenta': 40, 'cincuenta': 50, 'sesenta': 60, 'setenta': 70, 'ochenta': 80, 'noventa': 90,
+        'cien': 100, 'ciento': 100, 'doscientos': 200, 'trescientos': 300, 'cuatrocientos': 400, 'quinientos': 500, 'seiscientos': 600, 'setecientos': 700, 'ochocientos': 800, 'novecientos': 900
+    }
+    
+    multipliers = {
+        'mil': 1000,
+        'millon': 1000000,
+        'millones': 1000000
+    }
+
+    total = 0
+    current_number = 0
+
+    for word in words:
+        if word in word_map:
+            current_number += word_map[word]
+        elif word in multipliers:
+            if current_number == 0:
+                current_number = 1
+            total += current_number * multipliers[word]
+            current_number = 0
+        else:
+            try:
+                cleaned_word = re.sub(r'[^0-9]', '', word)
+                if cleaned_word:
+                    current_number += int(cleaned_word)
+            except ValueError:
+                pass # ignore words we don't know
+
+    total += current_number
+    return float(total) if total > 0 else None
 
 def parse_html_remates(path_html, output_excel="remates_html.xlsx"):
     with open(path_html, "rb") as f:
@@ -67,7 +136,7 @@ def parse_html_remates(path_html, output_excel="remates_html.xlsx"):
                     referencia = m.group(1).strip()
 
             # Campos básicos
-            exp = re.search(r"Exp(?:ediente)?[:\.\s]+([0-9A-Za-z\-/\.]+)", entry, re.I)
+            exp = re.search(r"Exp(?:ediente)?[ :\.\s]+([0-9A-Za-z\-/\.]+)", entry, re.I)
             juz = re.search(r"(JUZGADO[^\.;]{0,200})", entry, re.I)
             fecha = re.search(r"(\d{1,2}\s+de\s+[A-Za-záéíóúñ]+\s+de\s+\d{4})", entry, re.I)
 
@@ -76,20 +145,20 @@ def parse_html_remates(path_html, output_excel="remates_html.xlsx"):
 
 
 #            canton = None
-#            m = re.search(r"Cant[oó]n[:\uFF1A]?\s*([A-Za-zÁÉÍÓÚÑ0-9 ]{2,60})", entry, re.I)
+#            m = re.search(r"Cant[oó]n[:\uff1a]?\s*([A-Za-zÁÉÍÓÚÑ0-9 ]{2,60})", entry, re.I)
 #            if m: canton = m.group(1).strip()
 
 #            distrito = None
-#            m = re.search(r"Distrito[:\uFF1A]?\s*([A-Za-zÁÉÍÓÚÑ0-9 ]{2,60})", entry, re.I)
+#            m = re.search(r"Distrito[:\uff1a]?\s*([A-Za-zÁÉÍÓÚÑ0-9 ]{2,60})", entry, re.I)
 #            if m: distrito = m.group(1).strip()
 
             canton = None
-            m = re.search(r"Cant[oó]n[:\uFF1A]?\s*([0-9]{1,2}\s*-\s*[A-Za-zÁÉÍÓÚÑ ]+)", entry, re.I)
+            m = re.search(r"Cant[oó]n[:\uff1a]?\s*([0-9]{1,2}\s*-\s*[A-Za-zÁÉÍÓÚÑ ]+)", entry, re.I)
             if m:
                 canton = limpiar_nombre_geo(m.group(1))
 
             distrito = None
-            m = re.search(r"Distrito[:\uFF1A]?\s*([0-9]{1,2}\s*-\s*[A-Za-zÁÉÍÓÚÑ ]+)", entry, re.I)
+            m = re.search(r"Distrito[:\uff1a]?\s*([0-9]{1,2}\s*-\s*[A-Za-zÁÉÍÓÚÑ ]+)", entry, re.I)
             if m:
                 distrito = limpiar_nombre_geo(m.group(1))
 
@@ -97,6 +166,7 @@ def parse_html_remates(path_html, output_excel="remates_html.xlsx"):
 
 
             base_remate, base_valor, base_moneda = extraer_base(entry)
+            base_remate_texto = extraer_base_remate_texto(entry)
 
             records.append({
                 "referencia": referencia,
@@ -109,10 +179,12 @@ def parse_html_remates(path_html, output_excel="remates_html.xlsx"):
                 "base_remate": base_remate,
                 "base_valor": base_valor,
                 "base_moneda": base_moneda,
+                "base_remate_texto": base_remate_texto,
                 "texto_completo": entry[:1000]
             })
 
     df = pd.DataFrame(records)
+    df['base_remate_numero'] = df['base_remate_texto'].apply(texto_a_numero)
     df.to_excel(output_excel, index=False)
     print(f"✅ Guardado {len(df)} remates en {output_excel} (tomando referencia del <p> siguiente)")
     return df
