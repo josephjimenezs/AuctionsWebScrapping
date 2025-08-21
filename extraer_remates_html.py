@@ -154,17 +154,16 @@ def parse_html_remates(path_html, output_excel="remates_html.xlsx"):
                 "expediente": exp.group(1) if exp else None,
                 "juzgado": juz.group(1).strip() if juz else None,
                 "fecha": fecha.group(1) if fecha else None,
-                "provincia": provincia,
+                "provincia": provincia.upper(),
                 "canton": canton,
                 "distrito": distrito,
-                "base_remate": base_remate,
                 "base_moneda": base_moneda,
+                "base_remate_numero": texto_a_moneda(base_remate_texto),
                 "base_remate_texto": base_remate_texto,
-                "texto_completo": entry[:1000]
+                "texto_completo": entry[:5000]
             })
 
     df = pd.DataFrame(records)
-    df['base_remate_numero'] = df['base_remate_texto'].apply(texto_a_moneda)
     df.to_excel(output_excel, index=False)
     print(f"✅ Guardado {len(df)} remates en {output_excel} (tomando referencia del <p> siguiente)")
     return df
