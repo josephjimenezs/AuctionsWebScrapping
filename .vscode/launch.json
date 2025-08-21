@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: extraer_remates",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/extraer_remates_html.py",
+            "args": [
+                "data/Boletin1.html",
+                "remates_fincas.xlsx"
+            ],
+            "console": "integratedTerminal"
+        }
+    ]
+}
