@@ -137,12 +137,12 @@ def parse_html_remates(path_html, output_excel="remates_html.xlsx"):
             provincia = extraer_provincia(entry)
 
             canton = None
-            m = re.search(r"Cant[oó]n[:\uff1a]?\s*([0-9]{1,2}\s*-\s*[A-Za-zÁÉÍÓÚÑ ]+)", entry, re.I)
+            m = re.search(r"Cant[oó]n[:\uff1a]?\s*((?:[0-9]{1,2}\s*[- ]?\s*)?[A-Za-zÁÉÍÓÚÑ ]+)", entry, re.I)
             if m:
                 canton = limpiar_nombre_geo(m.group(1))
 
             distrito = None
-            m = re.search(r"Distrito[:\uff1a]?\s*([0-9]{1,2}\s*-\s*[A-Za-zÁÉÍÓÚÑ ]+)", entry, re.I)
+            m = re.search(r"Distrito[:\uff1a]?\s*((?:[0-9]{1,2}\s*[- ]?\s*)?[A-Za-zÁÉÍÓÚÑ ]+)", entry, re.I)
             if m:
                 distrito = limpiar_nombre_geo(m.group(1))
 
@@ -172,9 +172,10 @@ def limpiar_nombre_geo(texto: str) -> str:
     """Quita número inicial y tildes, deja el nombre limpio en mayúsculas."""
     if not texto:
         return None
-    # Si viene como "6-GUÁCIMO"
-    if "-" in texto:
-        nombre = texto.split("-", 1)[1]
+    # Si viene como "6-GUÁCIMO", "6 GUACIMO", o solo "GUACIMO"
+    match = re.match(r"^(?:[0-9]{1,2}\s*[- ]?\s*)?([A-Za-zÁÉÍÓÚÑ ]+)", texto.strip())
+    if match:
+        nombre = match.group(1)
     else:
         nombre = texto
     # Normalizar tildes y mayúsculas
